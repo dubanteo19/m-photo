@@ -1,0 +1,225 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LAN Debug Logs</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #111318;
+      color: #e5e7eb;
+      font: 14px/1.5 Consolas, Monaco, monospace;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 12px 16px;
+      background: #1b1e26;
+      border-bottom: 1px solid #343844;
+    }
+    h1 { font: bold 16px sans-serif; margin: 0; }
+    #status { color: #fbbf24; }
+    input, button {
+      padding: 7px 10px;
+      border: 1px solid #414653;
+      border-radius: 5px;
+      background: #252934;
+      color: inherit;
+    }
+    input { flex: 1; min-width: 150px; }
+    button { cursor: pointer; }
+    #logs { padding: 8px 12px; }
+    .entry {
+      padding: 8px 4px;
+      border-bottom: 1px solid #272a33;
+      overflow-wrap: anywhere;
+    }
+    .time { color: #8b93a5; margin-right: 12px; }
+    pre {
+      white-space: pre-wrap;
+      margin: 6px 0 0;
+      color: #b9e6ca;
+      font: inherit;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LAN Debug Logs</h1>
+    <span id="status">Connecting…</span>
+    <input id="filter" placeholder="Filter logs…">
+    <button id="pause">Pause</button>
+    <button id="clear">Clear</button>
+    <button id="bottom">Latest</button>
+  </header>
+  <main id="logs"></main>
+
+
+<script>
+  const logs = document.querySelector('#logs');
+  const status = document.querySelector('#status');
+  const filter = document.querySelector('#filter');
+  const pauseButton = document.querySelector('#pause');
+
+  const MAX_ENTRIES = 2000;
+
+  let entries = [];
+  let pending = [];
+  let paused = false;
+  let source;
+  let frame = null;
+
+  function createRow(entry) {
+    const row = document.createElement('div');
+    row.className = 'entry';
+
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = new Date(entry.time).toLocaleTimeString();
+
+    const message = document.createElement('pre');
+    message.textContent = entry.message;
+
+    row.append(time, message);
+    return row;
+  }
+
+  function trimEntries() {
+    if (entries.length > MAX_ENTRIES) {
+      entries.splice(0, entries.length - MAX_ENTRIES);
+    }
+  }
+
+  function render() {
+    const query = filter.value.toLowerCase();
+    const fragment = document.createDocumentFragment();
+
+    for (const entry of entries) {
+      if (entry.message.toLowerCase().includes(query)) {
+        fragment.prepend(createRow(entry));
+      }
+    }
+
+    logs.replaceChildren(fragment);
+  }
+
+  function flushPending() {
+    frame = null;
+
+    if (pending.length === 0) return;
+
+    const batch = pending;
+    pending = [];
+
+    entries.push(...batch);
+    trimEntries();
+
+    if (paused) return;
+
+    const query = filter.value.toLowerCase();
+    const fragment = document.createDocumentFragment();
+
+    // Process oldest to newest; prepend makes newest appear first.
+    for (const entry of batch) {
+      if (entry.message.toLowerCase().includes(query)) {
+        fragment.prepend(createRow(entry));
+      }
+    }
+
+    if (fragment.childNodes.length > 0) {
+      logs.prepend(fragment);
+
+      while (logs.children.length > MAX_ENTRIES) {
+        logs.lastElementChild.remove();
+      }
+    }
+  }
+
+  function addEntry(entry) {
+    pending.push(entry);
+
+    if (frame === null) {
+      frame = requestAnimationFrame(flushPending);
+    }
+  }
+
+  async function start() {
+    try {
+      const response = await fetch('/debug/history');
+
+      if (!response.ok) {
+        throw new Error(`History request failed: ${response.status}`);
+      }
+
+      const history = await response.json();
+      entries = history.slice(-MAX_ENTRIES);
+      render();
+
+      source = new EventSource('/debug/stream');
+
+      source.addEventListener('open', () => {
+        status.textContent = 'Live';
+        status.style.color = '#4ade80';
+      });
+
+      source.addEventListener('log', event => {
+        try {
+          const entry = JSON.parse(event.data);
+
+          if (
+            typeof entry.message === 'string' &&
+            entry.time != null
+          ) {
+            addEntry(entry);
+          }
+        } catch (error) {
+          console.error('Invalid log event', error);
+        }
+      });
+
+      source.onerror = () => {
+        status.textContent = 'Reconnecting…';
+        status.style.color = '#fbbf24';
+      };
+    } catch (error) {
+      status.textContent = 'Connection failed';
+      console.error(error);
+    }
+  }
+
+  filter.addEventListener('input', render);
+
+  pauseButton.addEventListener('click', () => {
+    paused = !paused;
+    pauseButton.textContent = paused ? 'Resume' : 'Pause';
+
+    if (!paused) render();
+  });
+
+  document.querySelector('#clear').addEventListener('click', () => {
+    entries = [];
+    pending = [];
+
+    if (frame !== null) {
+      cancelAnimationFrame(frame);
+      frame = null;
+    }
+
+    logs.replaceChildren();
+  });
+
+  document.querySelector('#bottom').addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  start();
+</script>
+</body>
+</html>
