@@ -25,7 +25,7 @@ import jakarta.ws.rs.core.Response;
 public class PhotoResource {
 
   @Inject
-  Event<PhotoUploadedEvent> photoUploadedEvent;
+  Event<PhotoUploadedEvent> eventPublisher;
 
   @Inject
   PhotoService photoService;
@@ -46,7 +46,7 @@ public class PhotoResource {
     return photoService.completeUpload(currentUserId, id)
         .invoke(updated -> {
           if (updated != null) {
-            photoUploadedEvent.fireAsync(
+            eventPublisher.fireAsync(
                 new PhotoUploadedEvent(updated.id, updated.sourceObjectKey, updated.sourceMimeType));
           }
         })
@@ -64,7 +64,7 @@ public class PhotoResource {
   public Uni<Response> getPhoto(@PathParam("id") Long id) {
     return photoService.getPhoto(id).map(response -> Response.ok(response).build());
   }
-
+  
   @DELETE
   @Path("/{id}")
   public Uni<Void> deletePhoto(@PathParam("id") Long id) {

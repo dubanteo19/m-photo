@@ -4,6 +4,6 @@ import java.time.Instant;
 import java.util.List;
 
 public record PhotoPageResponse(
-                List<PhotoResponse> items,
-                Instant nextCursor) {
+    List<PhotoResponse> items,
+    Instant nextCursor) {
 }

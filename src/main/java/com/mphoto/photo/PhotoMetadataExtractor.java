@@ -2,11 +2,15 @@ package com.mphoto.photo;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mphoto.photo.dto.PhotoMetadata;
+
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -22,15 +26,8 @@ public class PhotoMetadataExtractor {
 
     private static final DateTimeFormatter EXIF_DATE = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
 
-    public record PhotoMetadata(
-            Instant takenAt,
-            Double latitude,
-            Double longitude,
-            Integer width,
-            Integer height) {
-    }
-
     public PhotoMetadata extract(Path imagePath) throws IOException {
+        var start = Instant.now();
         Process process = new ProcessBuilder(
                 "exiftool",
                 "-json",
@@ -62,6 +59,7 @@ public class PhotoMetadataExtractor {
                     ? root.get(0)
                     : objectMapper.createObjectNode();
 
+            Log.infof("Metadata extraction took %d ms", Duration.between(start, Instant.now()).toMillis());
             return new PhotoMetadata(
                     parseTakenAt(metadata),
                     decimal(metadata, "GPSLatitude"),

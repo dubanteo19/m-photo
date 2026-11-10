@@ -7,6 +7,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.mphoto.model.Photo;
 import com.mphoto.model.PhotoStatus;
+import com.mphoto.photo.dto.UpdatePhotoCommand;
 import com.mphoto.photo.dto.request.PhotoUploadRequest;
 import com.mphoto.photo.dto.response.PhotoPageResponse;
 import com.mphoto.photo.dto.response.PhotoResponse;
@@ -61,6 +62,10 @@ public class PhotoService {
           return photoDbService.markProcessing(photoId)
               .map(updated -> updated != null ? photo : null);
         });
+  }
+
+  public Uni<Void> finalizePhotoUpload(UpdatePhotoCommand command) {
+    return photoDbService.update(command);
   }
 
   public Uni<PhotoPageResponse> getPhotos(Instant cursor) {

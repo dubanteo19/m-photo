@@ -8,7 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "chat_users")
+@Table(name = "m_users")
 public class User extends PanacheEntity {
 
   @Column(unique = true, nullable = false)

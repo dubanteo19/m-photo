@@ -2,7 +2,6 @@
 package com.mphoto.photo;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.jboss.logging.Logger;
 
 import com.mphoto.photo.dto.ProcessedImage;
 
@@ -13,6 +12,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -50,16 +51,12 @@ public class ImageProcessor {
                     input.toString(),
                     "--size", "2000x2000",
                     "--output", mainPng.toString()), log);
-
             // Generate thumbnail from the original, not the main image.
             runCommand(List.of(
                     "vipsthumbnail",
                     input.toString(),
-                    "--size", "400x400",
+                    "--size", "200x200",
                     "--output", thumbnailPng.toString()), log);
-
-            // Encode main image.
-            long start = System.nanoTime();
 
             encodeAvif(mainPng, mainAvif, log);
             encodeAvif(thumbnailPng, thumbnailAvif, log);
@@ -83,7 +80,7 @@ public class ImageProcessor {
                             try {
                                 Files.deleteIfExists(path);
                             } catch (IOException e) {
-                                LOG.warnf(e, "Failed to delete temporary file %s", path);
+                                Log.warnf(e, "Failed to delete temporary file %s", path);
                             }
                         });
             }
@@ -95,7 +92,7 @@ public class ImageProcessor {
             Path input,
             Path output,
             Path log) throws IOException {
-
+        var start = Instant.now();
         runCommand(List.of(
                 "avifenc",
                 "--min", AVIF_MIN,
@@ -103,6 +100,8 @@ public class ImageProcessor {
                 "--speed", String.valueOf(AVIF_SPEED),
                 input.toString(),
                 output.toString()), log);
+        Log.infof("AVIF encoding %s took %d ms", output.getFileName(),
+                Duration.between(start, Instant.now()).toMillis());
     }
 
     private int getDimension(

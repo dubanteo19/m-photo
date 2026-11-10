@@ -5,6 +5,7 @@ import java.time.Instant;
 import com.mphoto.model.Photo;
 import com.mphoto.model.PhotoStatus;
 import com.mphoto.model.User;
+import com.mphoto.photo.dto.UpdatePhotoCommand;
 import com.mphoto.photo.dto.request.PhotoUploadRequest;
 import com.mphoto.photo.dto.response.PhotoPageResponse;
 import com.mphoto.photo.dto.response.PhotoResponse;
@@ -30,6 +31,23 @@ public class PhotoDbService {
     photo.status = PhotoStatus.UPLOADING;
     photo.sourceObjectKey = objectKey;
     return photo.persistAndFlush();
+  }
+
+  @WithSession
+  public Uni<Void> update(UpdatePhotoCommand command) {
+    return findRequired(command.photoId())
+        .flatMap(photo -> {
+          photo.objectKey = command.objectKey();
+          photo.thumbnailKey = command.thumbnailKey();
+          photo.size = command.size();
+          photo.takenAt = command.takenAt();
+          photo.latitude = command.latitude();
+          photo.longitude = command.longitude();
+          photo.width = command.width();
+          photo.height = command.height();
+          photo.status = PhotoStatus.READY;
+          return photo.persistAndFlush().replaceWithVoid();
+        });
   }
 
   @WithSession
