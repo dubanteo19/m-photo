@@ -5,6 +5,7 @@ import java.time.Instant;
 import com.mphoto.model.Photo;
 import com.mphoto.model.PhotoStatus;
 import com.mphoto.model.User;
+import com.mphoto.photo.dto.PhotoStorageProjection;
 import com.mphoto.photo.dto.UpdatePhotoCommand;
 import com.mphoto.photo.dto.request.PhotoUploadRequest;
 import com.mphoto.photo.dto.response.PhotoPageResponse;
@@ -117,5 +118,19 @@ public class PhotoDbService {
           photo.status = PhotoStatus.PROCESSING;
           return photo.persistAndFlush();
         });
+  }
+
+  public Uni<PhotoStorageProjection> getStorageStats(Long userId) {
+    return Photo.find("""
+        SELECT
+            COUNT(p),
+            COALESCE(SUM(p.sourceSize), 0),
+            COALESCE(SUM(p.size), 0)
+        FROM Photo p
+        WHERE p.uploadedBy.id = ?1
+          AND p.status = ?2
+        """, userId, PhotoStatus.READY)
+        .project(PhotoStorageProjection.class)
+        .singleResult();
   }
 }

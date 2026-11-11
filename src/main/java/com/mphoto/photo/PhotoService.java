@@ -7,6 +7,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import com.mphoto.model.Photo;
 import com.mphoto.model.PhotoStatus;
+import com.mphoto.photo.dto.AccountStorageStats;
 import com.mphoto.photo.dto.UpdatePhotoCommand;
 import com.mphoto.photo.dto.request.PhotoUploadRequest;
 import com.mphoto.photo.dto.response.PhotoPageResponse;
@@ -93,5 +94,10 @@ public class PhotoService {
       throw new BadRequestException(
           "Image exceeds maximum upload size");
     }
+  }
+
+  public Uni<AccountStorageStats> getAccountStorageStats(Long userId) {
+    return photoDbService.getStorageStats(userId)
+        .map(AccountStorageStats::from);
   }
 }

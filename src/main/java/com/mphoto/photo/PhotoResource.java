@@ -64,10 +64,16 @@ public class PhotoResource {
   public Uni<Response> getPhoto(@PathParam("id") Long id) {
     return photoService.getPhoto(id).map(response -> Response.ok(response).build());
   }
-  
+
   @DELETE
   @Path("/{id}")
   public Uni<Void> deletePhoto(@PathParam("id") Long id) {
     return photoService.deletePhoto(id);
+  }
+
+  @GET
+  @Path("/storage-stats")
+  public Uni<Response> getStorageStats() {
+    return photoService.getAccountStorageStats(currentUserId).map(stats -> Response.ok(stats).build());
   }
 }
