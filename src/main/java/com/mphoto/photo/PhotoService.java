@@ -1,6 +1,7 @@
 package com.mphoto.photo;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -80,8 +81,12 @@ public class PhotoService {
         .map(PhotoResponse::fromEntity);
   }
 
-  public Uni<Void> deletePhoto(Long id) {
-    return photoDbService.deletePhoto(id);
+  public Uni<Void> moveToTrash(Long userId, List<Long> photoIds) {
+    return photoDbService.moveToTrash(userId, photoIds);
+  }
+
+  public Uni<Void> restoreFromTrash(Long userId, List<Long> photoIds) {
+    return photoDbService.restoreFromTrash(userId, photoIds);
   }
 
   private void validateUpload(PhotoUploadRequest request) {

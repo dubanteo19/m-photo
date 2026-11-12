@@ -5,6 +5,7 @@ import java.time.Instant;
 import org.eclipse.microprofile.jwt.Claim;
 
 import com.mphoto.event.PhotoUploadedEvent;
+import com.mphoto.photo.dto.request.PhotoIdsRequest;
 import com.mphoto.photo.dto.request.PhotoUploadRequest;
 import com.mphoto.photo.dto.response.PhotoUploadResponse;
 
@@ -12,8 +13,9 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.DELETE;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -36,7 +38,7 @@ public class PhotoResource {
 
   @POST
   public Uni<PhotoUploadResponse> createUpload(
-      PhotoUploadRequest request) {
+      @Valid PhotoUploadRequest request) {
     return photoService.createUpload(currentUserId, request);
   }
 
@@ -65,10 +67,16 @@ public class PhotoResource {
     return photoService.getPhoto(id).map(response -> Response.ok(response).build());
   }
 
-  @DELETE
-  @Path("/{id}")
-  public Uni<Void> deletePhoto(@PathParam("id") Long id) {
-    return photoService.deletePhoto(id);
+  @PATCH
+  @Path("/trash")
+  public Uni<Void> moveToTrash(@Valid PhotoIdsRequest request) {
+    return photoService.moveToTrash(currentUserId, request.ids());
+  }
+
+  @PATCH
+  @Path("/restore")
+  public Uni<Void> restoreFromTrash(@Valid PhotoIdsRequest request) {
+    return photoService.restoreFromTrash(currentUserId, request.ids());
   }
 
   @GET

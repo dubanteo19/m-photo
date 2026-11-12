@@ -18,33 +18,35 @@ import jakarta.persistence.Table;
 @Table(name = "photos")
 public class Photo extends PanacheEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "uploaded_by", nullable = false)
-    public User uploadedBy;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "uploaded_by", nullable = false)
+  public User uploadedBy;
 
-    public Instant takenAt;
+  public Instant takenAt;
 
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
-    public Instant uploadedAt;
+  @CreationTimestamp
+  @Column(nullable = false, updatable = false)
+  public Instant uploadedAt;
 
-    public Double latitude;
-    public Double longitude;
+  public Instant deletedAt;
 
-    public Integer width;
-    public Integer height;
+  public Double latitude;
+  public Double longitude;
 
-    public Long sourceSize;
-    public Long size;
+  public Integer width;
+  public Integer height;
 
-    public String sourceObjectKey;
-    public String objectKey;
-    public String thumbnailKey;
+  public Long sourceSize;
+  public Long size;
 
-    public String originalFilename;
-    public String sourceMimeType;
+  public String sourceObjectKey;
+  public String objectKey;
+  public String thumbnailKey;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    public PhotoStatus status = PhotoStatus.UPLOADING;
+  public String originalFilename;
+  public String sourceMimeType;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  public PhotoStatus status = PhotoStatus.UPLOADING;
 }

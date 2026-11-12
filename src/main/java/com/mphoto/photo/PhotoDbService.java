@@ -1,6 +1,7 @@
 package com.mphoto.photo;
 
 import java.time.Instant;
+import java.util.List;
 
 import com.mphoto.model.Photo;
 import com.mphoto.model.PhotoStatus;
@@ -54,17 +55,12 @@ public class PhotoDbService {
   @WithSession
   public Uni<PhotoPageResponse> getPhotos(Instant cursor) {
 
-    String query = "status = ?1";
-    Object[] params;
-
-    if (cursor != null) {
-      query += " and uploadedAt < ?2";
-      params = new Object[] { PhotoStatus.READY, cursor };
-    } else {
-      params = new Object[] { PhotoStatus.READY };
-    }
-
-    return Photo.<Photo>find(query + " order by uploadedAt desc", params)
+    return Photo.<Photo>find("""
+            status = ?1
+            AND deletedAt IS NULL
+            AND (?2 IS NULL OR uploadedAt < ?2)
+            ORDER BY uploadedAt DESC
+        """, PhotoStatus.READY, cursor)
         .page(0, 30 + 1)
         .list()
         .map(photos -> {
@@ -92,9 +88,32 @@ public class PhotoDbService {
         PhotoStatus.READY).firstResult();
   }
 
-  public Uni<Void> deletePhoto(Long id) {
-    return findRequired(id)
-        .flatMap(photo -> photo.delete())
+  @WithTransaction
+  public Uni<Void> moveToTrash(Long userId, List<Long> photoIds) {
+    return Photo.update(
+        """
+            deletedAt = ?1
+            where id in ?2
+            and uploadedBy.id = ?3
+            and deletedAt is null
+            """,
+        Instant.now(),
+        photoIds,
+        userId)
+        .replaceWithVoid();
+  }
+
+  @WithTransaction
+  public Uni<Void> restoreFromTrash(Long userId, List<Long> photoIds) {
+    return Photo.update(
+        """
+            deletedAt = null
+            where id in ?1
+            and uploadedBy.id = ?2
+            and deletedAt is not null
+            """,
+        photoIds,
+        userId)
         .replaceWithVoid();
   }
 
