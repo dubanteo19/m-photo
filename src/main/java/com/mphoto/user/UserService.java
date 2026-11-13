@@ -27,7 +27,7 @@ public class UserService {
 
   @CacheResult(cacheName = CacheConstants.CURRENT_USER_INFO_BY_ID)
   public Uni<CurrentUserInfo> getCurrentUserInfoById(Long userId) {
-    Log.info("CACHE MISS! Fetching from DB layer for current user %d: " + userId);
+    Log.infof("CACHE MISS! Fetching from DB layer for current user %d: ", userId);
     return userDbService.findRequiredById(userId).map(CurrentUserInfo::fromEntity);
   }
 

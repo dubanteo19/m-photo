@@ -58,7 +58,14 @@ public class PhotoResource {
   @GET
   public Uni<Response> getPhotos(
       @QueryParam("cursor") Instant cursor) {
-    return photoService.getPhotos(cursor).map(response -> Response.ok(response).build());
+    return photoService.getPhotos(currentUserId, cursor).map(response -> Response.ok(response).build());
+  }
+
+  @GET
+  @Path("/trash")
+  public Uni<Response> getTrashedPhotos(
+      @QueryParam("cursor") Instant cursor) {
+    return photoService.getTrashedPhotos(currentUserId, cursor).map(response -> Response.ok(response).build());
   }
 
   @GET

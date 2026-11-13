@@ -10,7 +10,6 @@ import com.mphoto.photo.dto.PhotoStorageProjection;
 import com.mphoto.photo.dto.UpdatePhotoCommand;
 import com.mphoto.photo.dto.request.PhotoUploadRequest;
 import com.mphoto.photo.dto.response.PhotoPageResponse;
-import com.mphoto.photo.dto.response.PhotoResponse;
 
 import io.quarkus.hibernate.reactive.panache.common.WithSession;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
@@ -21,6 +20,7 @@ import jakarta.ws.rs.NotFoundException;
 
 @ApplicationScoped
 public class PhotoDbService {
+  private static final int PAGE_SIZE = 30;
 
   @WithTransaction
   public Uni<Photo> createPhoto(Long userId, String objectKey, PhotoUploadRequest request) {
@@ -53,31 +53,32 @@ public class PhotoDbService {
   }
 
   @WithSession
-  public Uni<PhotoPageResponse> getPhotos(Instant cursor) {
+  public Uni<PhotoPageResponse> getPhotos(Long userId, Instant cursor) {
+    return findPhotos(userId, cursor, "deletedAt IS NULL", "uploadedAt");
+  }
 
-    return Photo.<Photo>find("""
-            status = ?1
-            AND deletedAt IS NULL
-            AND (?2 IS NULL OR uploadedAt < ?2)
-            ORDER BY uploadedAt DESC
-        """, PhotoStatus.READY, cursor)
-        .page(0, 30 + 1)
+  @WithSession
+  public Uni<PhotoPageResponse> getTrashedPhotos(Long userId, Instant cursor) {
+    return findPhotos(userId, cursor, "deletedAt IS NOT NULL", "deletedAt");
+  }
+
+  private Uni<PhotoPageResponse> findPhotos(
+      Long userId,
+      Instant cursor,
+      String condition,
+      String sortField) {
+    String query = """
+        status = ?1
+        AND uploadedBy.id = ?2
+        AND %s
+        AND (?3 IS NULL OR %s < ?3)
+        ORDER BY %s DESC
+        """.formatted(condition, sortField, sortField);
+
+    return Photo.<Photo>find(query, PhotoStatus.READY, userId, cursor)
+        .page(0, PAGE_SIZE + 1)
         .list()
-        .map(photos -> {
-          boolean hasNext = photos.size() > 30;
-          if (hasNext)
-            photos.remove(30);
-
-          Instant nextCursor = hasNext
-              ? photos.getLast().uploadedAt
-              : null;
-
-          return new PhotoPageResponse(
-              photos.stream()
-                  .map(PhotoResponse::fromEntity)
-                  .toList(),
-              nextCursor);
-        });
+        .map(PhotoPageResponse::toPageResponse);
   }
 
   @WithSession
@@ -100,6 +101,7 @@ public class PhotoDbService {
         Instant.now(),
         photoIds,
         userId)
+        .invoke(() -> Log.infof("User %d moved photos to trash: %d", userId, photoIds))
         .replaceWithVoid();
   }
 

@@ -70,8 +70,12 @@ public class PhotoService {
     return photoDbService.update(command);
   }
 
-  public Uni<PhotoPageResponse> getPhotos(Instant cursor) {
-    return photoDbService.getPhotos(cursor);
+  public Uni<PhotoPageResponse> getPhotos(Long userId, Instant cursor) {
+    return photoDbService.getPhotos(userId, cursor);
+  }
+
+  public Uni<PhotoPageResponse> getTrashedPhotos(Long userId, Instant cursor) {
+    return photoDbService.getTrashedPhotos(userId, cursor);
   }
 
   public Uni<PhotoResponse> getPhoto(Long id) {
