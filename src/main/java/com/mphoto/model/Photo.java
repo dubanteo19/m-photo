@@ -1,9 +1,5 @@
 package com.mphoto.model;
 
-import java.time.Instant;
-
-import org.hibernate.annotations.CreationTimestamp;
-
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +9,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "photos")

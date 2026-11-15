@@ -1,34 +1,27 @@
 package com.mphoto.photo;
 
+import com.mphoto.event.PhotoProcessedEvent;
+import com.mphoto.event.PhotoUploadedEvent;
+import com.mphoto.photo.dto.ProcessedImage;
+import com.mphoto.storage.StorageService;
+import io.quarkus.logging.Log;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.enterprise.event.ObservesAsync;
+import jakarta.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
 
-import com.mphoto.event.PhotoProcessedEvent;
-import com.mphoto.event.PhotoUploadedEvent;
-import com.mphoto.photo.dto.ProcessedImage;
-import com.mphoto.storage.StorageService;
-
-import io.quarkus.logging.Log;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Event;
-import jakarta.enterprise.event.ObservesAsync;
-import jakarta.inject.Inject;
-
 @ApplicationScoped
 public class PhotoProcessingWorker {
-  @Inject
-  StorageService storageService;
-  @Inject
-  ImageProcessor imageProcessor;
-  @Inject
-  PhotoService photoService;
-  @Inject
-  PhotoMetadataExtractor metadataExtractor;
-  @Inject
-  Event<PhotoProcessedEvent> photoProcessedEvent;
+  @Inject StorageService storageService;
+  @Inject ImageProcessor imageProcessor;
+  @Inject PhotoService photoService;
+  @Inject PhotoMetadataExtractor metadataExtractor;
+  @Inject Event<PhotoProcessedEvent> photoProcessedEvent;
 
   void onPhotoUploaded(@ObservesAsync PhotoUploadedEvent event) {
     Path source = null;
@@ -38,10 +31,7 @@ public class PhotoProcessingWorker {
       source = Files.createTempFile("photo-", ".source");
       // Download the original image from storage to a temporary file.
       try (var input = storageService.downloadObject(event.objectKey())) {
-        Files.copy(
-            input,
-            source,
-            StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(input, source, StandardCopyOption.REPLACE_EXISTING);
       }
       // 1. Extract metadata from the original.
       var metadata = metadataExtractor.extract(source);
@@ -61,17 +51,14 @@ public class PhotoProcessingWorker {
       // 4. Upload the thumbnail to storage.
       storageService.uploadObject(thumbnailKey, processed.thumbnailBytes());
 
-      Log.infof("Successfully processed photo %d, took %d ms", event.photoId(),
-          Duration.between(start, Instant.now()).toMillis());
+      Log.infof(
+          "Successfully processed photo %d, took %d ms",
+          event.photoId(), Duration.between(start, Instant.now()).toMillis());
 
       // 5. Fire an event to notify that the photo has been processed.
       photoProcessedEvent.fireAsync(
           new PhotoProcessedEvent(
-              event.photoId(),
-              photoKey,
-              thumbnailKey,
-              processed.size(),
-              metadata));
+              event.photoId(), photoKey, thumbnailKey, processed.size(), metadata));
     } catch (Exception e) {
       Log.errorf(e, "Failed to process photo %d", event.photoId());
     } finally {
@@ -85,3 +72,4 @@ public class PhotoProcessingWorker {
     }
   }
 }
+

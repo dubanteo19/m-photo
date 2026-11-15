@@ -14,8 +14,7 @@ public record AccountStorageStats(
         projection.originalBytes(),
         projection.storedBytes(),
         saved,
-        projection.originalBytes() == 0
-            ? 0
-            : saved * 100.0 / projection.originalBytes());
+        projection.originalBytes() == 0 ? 0 : saved * 100.0 / projection.originalBytes());
   }
 }
+

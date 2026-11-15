@@ -1,32 +1,32 @@
 package com.mphoto.storage;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
 import com.mphoto.storage.dto.PresignedUrl;
-
 import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
+import io.minio.RemoveObjectsArgs;
 import io.minio.UploadObjectArgs;
 import io.minio.http.Method;
+import io.minio.messages.DeleteObject;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
 public class StorageService {
 
   private static final int UPLOAD_URL_EXPIRY_MINUTES = 10;
 
-  @Inject
-  MinioClient minioClient;
+  @Inject MinioClient minioClient;
 
   @ConfigProperty(name = "app.bucket")
   String bucketName;
@@ -37,15 +37,48 @@ public class StorageService {
   @ConfigProperty(name = "quarkus.minio.port")
   String minioPort;
 
+  public void deleteObjects(List<String> objectKeys) {
+    if (objectKeys == null || objectKeys.isEmpty()) {
+      Log.infof("objects is empty");
+      return;
+    }
+    try {
+      var deleteObjects = objectKeys.stream().map(DeleteObject::new).toList();
+      var results =
+          minioClient.removeObjects(
+              RemoveObjectsArgs.builder().bucket(bucketName).objects(deleteObjects).build());
+      for (var result : results) {
+        var error = result.get();
+        Log.errorf("Failed to delete object %s: %s", error.objectName(), error.message());
+      }
+
+      Log.infof("%d objects has been deleted", objectKeys.size());
+    } catch (Exception e) {
+      throw new StorageException("Could not delete objects", e);
+    }
+  }
+
+  public void deleteObject(String objectKey) {
+    try {
+      Log.infof("Delete object %s ", objectKey);
+      var removeObjectArgs =
+          RemoveObjectArgs.builder().bucket(bucketName).object(objectKey).build();
+      minioClient.removeObject(removeObjectArgs);
+    } catch (Exception e) {
+      throw new StorageException("Could not remove object" + objectKey, e);
+    }
+  }
+
   public void uploadObject(String fileName, String objectKey) {
     try {
       Log.infof("Upload object %s, name %s ", objectKey, fileName);
-      var uploadObjectArgs = UploadObjectArgs.builder()
-          .bucket(bucketName)
-          .object(objectKey)
-          .filename(fileName)
-          .contentType("application/zip")
-          .build();
+      var uploadObjectArgs =
+          UploadObjectArgs.builder()
+              .bucket(bucketName)
+              .object(objectKey)
+              .filename(fileName)
+              .contentType("application/zip")
+              .build();
       minioClient.uploadObject(uploadObjectArgs);
     } catch (Exception e) {
       throw new StorageException("Could not upload object" + objectKey, e);
@@ -54,9 +87,10 @@ public class StorageService {
 
   public void uploadObject(String objectKey, byte[] bytes) {
     try {
-      var putObjectArgs = PutObjectArgs.builder().bucket(bucketName).object(objectKey).stream(
-          new ByteArrayInputStream(bytes), bytes.length, -1)
-          .build();
+      var putObjectArgs =
+          PutObjectArgs.builder().bucket(bucketName).object(objectKey).stream(
+                  new ByteArrayInputStream(bytes), bytes.length, -1)
+              .build();
       minioClient.putObject(putObjectArgs);
     } catch (Exception e) {
       throw new StorageException("Could not upload object" + objectKey, e);
@@ -75,17 +109,18 @@ public class StorageService {
 
   public String getDownloadUrl(String objectKey, String fileName) {
     try {
-      String presignedUrl = minioClient.getPresignedObjectUrl(
-          GetPresignedObjectUrlArgs.builder()
-              .method(Method.GET)
-              .bucket(bucketName)
-              .object(objectKey)
-              .extraQueryParams(
-                  Map.of(
-                      "response-content-disposition",
-                      "attachment; filename=\"" + fileName + "\""))
-              .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
-              .build());
+      String presignedUrl =
+          minioClient.getPresignedObjectUrl(
+              GetPresignedObjectUrlArgs.builder()
+                  .method(Method.GET)
+                  .bucket(bucketName)
+                  .object(objectKey)
+                  .extraQueryParams(
+                      Map.of(
+                          "response-content-disposition",
+                          "attachment; filename=\"" + fileName + "\""))
+                  .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
+                  .build());
       return presignedUrl;
     } catch (Exception e) {
       throw new StorageException("Could not generate download URL for object" + objectKey, e);
@@ -94,13 +129,14 @@ public class StorageService {
 
   public PresignedUrl createPresignedUploadUrl(String objectKey) {
     try {
-      String uploadUrl = minioClient.getPresignedObjectUrl(
-          GetPresignedObjectUrlArgs.builder()
-              .method(Method.PUT)
-              .bucket(bucketName)
-              .object(objectKey)
-              .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
-              .build());
+      String uploadUrl =
+          minioClient.getPresignedObjectUrl(
+              GetPresignedObjectUrlArgs.builder()
+                  .method(Method.PUT)
+                  .bucket(bucketName)
+                  .object(objectKey)
+                  .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
+                  .build());
 
       String downloadUrl = StorageUtil.getUrlPrefix() + objectKey;
 
@@ -119,13 +155,14 @@ public class StorageService {
     String objectKey = prefix + UUID.randomUUID() + extension;
 
     try {
-      String uploadUrl = minioClient.getPresignedObjectUrl(
-          GetPresignedObjectUrlArgs.builder()
-              .method(Method.PUT)
-              .bucket(bucketName)
-              .object(objectKey)
-              .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
-              .build());
+      String uploadUrl =
+          minioClient.getPresignedObjectUrl(
+              GetPresignedObjectUrlArgs.builder()
+                  .method(Method.PUT)
+                  .bucket(bucketName)
+                  .object(objectKey)
+                  .expiry(UPLOAD_URL_EXPIRY_MINUTES, TimeUnit.MINUTES)
+                  .build());
 
       String downloadUrl = StorageUtil.getUrlPrefix() + objectKey;
 
@@ -159,5 +196,4 @@ public class StorageService {
       super(message, cause);
     }
   }
-
 }

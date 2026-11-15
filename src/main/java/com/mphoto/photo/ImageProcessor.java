@@ -1,12 +1,8 @@
-
 package com.mphoto.photo;
 
-import jakarta.enterprise.context.ApplicationScoped;
-
 import com.mphoto.photo.dto.ProcessedImage;
-
 import io.quarkus.logging.Log;
-
+import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -40,23 +36,28 @@ public class ImageProcessor {
 
       Path log = workDir.resolve("process.log");
 
-      Files.copy(
-          imageStream,
-          input,
-          StandardCopyOption.REPLACE_EXISTING);
+      Files.copy(imageStream, input, StandardCopyOption.REPLACE_EXISTING);
 
       // Resize main image, preserving aspect ratio and orientation.
-      runCommand(List.of(
-          "vipsthumbnail",
-          input.toString(),
-          "--size", "2000x2000",
-          "--output", mainJpeg.toString()), log);
+      runCommand(
+          List.of(
+              "vipsthumbnail",
+              input.toString(),
+              "--size",
+              "2000x2000",
+              "--output",
+              mainJpeg.toString()),
+          log);
       // Generate thumbnail from the original, not the main image.
-      runCommand(List.of(
-          "vipsthumbnail",
-          input.toString(),
-          "--size", "200x200",
-          "--output", thumbnailJpeg.toString()), log);
+      runCommand(
+          List.of(
+              "vipsthumbnail",
+              input.toString(),
+              "--size",
+              "200x200",
+              "--output",
+              thumbnailJpeg.toString()),
+          log);
 
       encodeAvif(mainJpeg, mainAvif, log);
       encodeAvif(thumbnailJpeg, thumbnailAvif, log);
@@ -64,64 +65,57 @@ public class ImageProcessor {
       byte[] mainBytes = Files.readAllBytes(mainAvif);
       byte[] thumbnailBytes = Files.readAllBytes(thumbnailAvif);
 
-      return new ProcessedImage(
-          mainBytes,
-          thumbnailBytes,
-          mainBytes.length);
+      return new ProcessedImage(mainBytes, thumbnailBytes, mainBytes.length);
     } finally {
       try (var paths = Files.walk(workDir)) {
-        paths.sorted(Comparator.reverseOrder())
-            .forEach(path -> {
-              try {
-                Files.deleteIfExists(path);
-              } catch (IOException e) {
-                Log.warnf(e, "Failed to delete temporary file %s", path);
-              }
-            });
+        paths
+            .sorted(Comparator.reverseOrder())
+            .forEach(
+                path -> {
+                  try {
+                    Files.deleteIfExists(path);
+                  } catch (IOException e) {
+                    Log.warnf(e, "Failed to delete temporary file %s", path);
+                  }
+                });
       }
     }
-
   }
 
-  private void encodeAvif(
-      Path input,
-      Path output,
-      Path log) throws IOException {
+  private void encodeAvif(Path input, Path output, Path log) throws IOException {
     var start = Instant.now();
-    runCommand(List.of(
-        "avifenc",
-        "--min", AVIF_MIN,
-        "--max", AVIF_MAX,
-        "--speed", String.valueOf(AVIF_SPEED),
-        input.toString(),
-        output.toString()), log);
-    Log.infof("AVIF encoding %s took %d ms", output.getFileName(),
-        Duration.between(start, Instant.now()).toMillis());
+    runCommand(
+        List.of(
+            "avifenc",
+            "--min",
+            AVIF_MIN,
+            "--max",
+            AVIF_MAX,
+            "--speed",
+            String.valueOf(AVIF_SPEED),
+            input.toString(),
+            output.toString()),
+        log);
+    Log.infof(
+        "AVIF encoding %s took %d ms",
+        output.getFileName(), Duration.between(start, Instant.now()).toMillis());
   }
 
-  private void runCommand(
-      List<String> command,
-      Path log) throws IOException {
+  private void runCommand(List<String> command, Path log) throws IOException {
 
-    Process process = new ProcessBuilder(command)
-        .redirectErrorStream(true)
-        .redirectOutput(log.toFile())
-        .start();
+    Process process =
+        new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();
 
     try {
-      boolean completed = process.waitFor(
-          PROCESS_TIMEOUT_SECONDS,
-          TimeUnit.SECONDS);
+      boolean completed = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
       if (!completed) {
         process.destroyForcibly();
-        throw new IOException(
-            "Process timed out: " + command.get(0));
+        throw new IOException("Process timed out: " + command.get(0));
       }
 
       if (process.exitValue() != 0) {
-        throw new IOException(
-            command.get(0) + " failed: " + Files.readString(log));
+        throw new IOException(command.get(0) + " failed: " + Files.readString(log));
       }
 
     } catch (InterruptedException e) {
@@ -137,8 +131,7 @@ public class ImageProcessor {
       case "image/png" -> ".png";
       case "image/heic" -> ".heic";
       case "image/heif" -> ".heif";
-      default -> throw new IllegalArgumentException(
-          "Unsupported image type: " + contentType);
+      default -> throw new IllegalArgumentException("Unsupported image type: " + contentType);
     };
   }
 }

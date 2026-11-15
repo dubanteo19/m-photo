@@ -1,7 +1,6 @@
 package com.mphoto.user;
 
 import com.mphoto.model.User;
-
 import io.quarkus.hibernate.reactive.panache.common.WithSession;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -34,5 +33,4 @@ public class UserDbService {
         .failWith(() -> new NotFoundException("User not found: " + username))
         .map(user -> user.id);
   }
-
 }
