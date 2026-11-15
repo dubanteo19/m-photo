@@ -3,7 +3,6 @@ package com.mphoto.auth;
 import com.mphoto.auth.dto.request.UserLoginRequest;
 import com.mphoto.auth.dto.request.UserRegisterRequest;
 import com.mphoto.user.UserService;
-
 import io.quarkus.logging.Log;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.mutiny.Uni;
@@ -23,14 +22,10 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 @RequestScoped
 public class AuthResource {
 
-  @Inject
-  AuthService authService;
-  @Inject
-  PasswordService passwordService;
-  @Inject
-  UserService userService;
-  @Inject
-  JsonWebToken jwt;
+  @Inject AuthService authService;
+  @Inject PasswordService passwordService;
+  @Inject UserService userService;
+  @Inject JsonWebToken jwt;
 
   @ConfigProperty(name = "app.domain")
   Optional<String> host;
@@ -42,12 +37,12 @@ public class AuthResource {
         .hashPassword(request.password())
         .chain(
             hashedPassword -> {
-              var secureRequest = new UserRegisterRequest(
-                  request.username(), hashedPassword);
+              var secureRequest = new UserRegisterRequest(request.username(), hashedPassword);
               return authService
                   .registerUser(secureRequest)
                   .map(
-                      userInfo -> Response.status(Response.Status.CREATED).entity(userInfo).build());
+                      userInfo ->
+                          Response.status(Response.Status.CREATED).entity(userInfo).build());
             });
   }
 
@@ -79,21 +74,23 @@ public class AuthResource {
         .loginUser(request)
         .map(
             userInfo -> {
-              String signedToken = Jwt.issuer("https://dbt19.site")
-                  .upn(userInfo.username())
-                  .subject(String.valueOf(userInfo.id()))
-                  .claim("userId", userInfo.id())
-                  .groups("USER")
-                  .expiresIn(Duration.ofDays(30))
-                  .sign();
+              String signedToken =
+                  Jwt.issuer("https://dbt19.site")
+                      .upn(userInfo.username())
+                      .subject(String.valueOf(userInfo.id()))
+                      .claim("userId", userInfo.id())
+                      .groups("USER")
+                      .expiresIn(Duration.ofDays(30))
+                      .sign();
 
-              var builder = new NewCookie.Builder("m_user")
-                  .value(signedToken)
-                  .path("/")
-                  .maxAge((int) Duration.ofDays(30).toSeconds())
-                  .secure(false)
-                  .httpOnly(true)
-                  .sameSite(NewCookie.SameSite.LAX);
+              var builder =
+                  new NewCookie.Builder("m_user")
+                      .value(signedToken)
+                      .path("/")
+                      .maxAge((int) Duration.ofDays(30).toSeconds())
+                      .secure(false)
+                      .httpOnly(true)
+                      .sameSite(NewCookie.SameSite.LAX);
 
               if (host.isPresent()) {
                 builder.domain(host.get());
@@ -108,17 +105,21 @@ public class AuthResource {
   @POST
   @Path("/logout")
   public Uni<Response> logout() {
-    var builder = new NewCookie.Builder("m_user")
-        .path("/")
-        .maxAge(0)
-        .secure(false)
-        .httpOnly(true)
-        .sameSite(NewCookie.SameSite.LAX);
+    var builder =
+        new NewCookie.Builder("m_user")
+            .path("/")
+            .maxAge(0)
+            .secure(false)
+            .httpOnly(true)
+            .sameSite(NewCookie.SameSite.LAX);
 
     if (host.isPresent()) {
       builder.domain(host.get());
     }
     var authCookie = builder.build();
+
+    String username = jwt.getName();
+    Log.warnf("user %s logout", username);
     return Uni.createFrom().item(() -> Response.ok().cookie(authCookie).build());
   }
 }

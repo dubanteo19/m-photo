@@ -54,6 +54,7 @@ public class PhotoDbService {
 
   @WithSession
   public Uni<PhotoPageResponse> getPhotos(Long userId, Instant cursor) {
+    Log.infof("user %d querying photos", userId);
     return findPhotos(userId, cursor, "deletedAt IS NULL", "uploadedAt");
   }
 
@@ -120,7 +121,7 @@ public class PhotoDbService {
             Instant.now(),
             photoIds,
             userId)
-        .invoke(() -> Log.infof("User %d moved photos to trash: %d", userId, photoIds))
+        .invoke(() -> Log.infof("User %d moved %d photos to trash!", userId, photoIds.size()))
         .replaceWithVoid();
   }
 
