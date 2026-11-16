@@ -9,7 +9,8 @@ import org.eclipse.microprofile.jwt.Claim;
 @RequestScoped
 public class UserResource {
 
-  @Inject UserService userService;
+  @Inject
+  UserService userService;
 
   @Inject
   @Claim("userId")

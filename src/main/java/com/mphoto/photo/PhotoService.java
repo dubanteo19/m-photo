@@ -22,18 +22,19 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
 public class PhotoService {
-  @Inject PhotoDbService photoDbService;
-  @Inject StorageService storageService;
-  private static final Set<String> ALLOWED_TYPES =
-      Set.of("image/jpeg", "image/png", "image/heic", "image/heif", "image/webp", "image/avif");
+  @Inject
+  PhotoDbService photoDbService;
+  @Inject
+  StorageService storageService;
+  private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/heic", "image/heif",
+      "image/webp", "image/avif");
 
   @ConfigProperty(name = "photo.upload.max-size", defaultValue = "52428800")
   long maxUploadSize;
 
   public Uni<PhotoUploadResponse> createUpload(Long userId, PhotoUploadRequest request) {
     validateUpload(request);
-    var presigned =
-        storageService.createPresignedUploadUrl(userId, request.filename(), "SOURCE_IMAGE");
+    var presigned = storageService.createPresignedUploadUrl(userId, request.filename(), "SOURCE_IMAGE");
     return photoDbService
         .createPhoto(userId, presigned.objectKey(), request)
         .map(photo -> new PhotoUploadResponse(photo.id, presigned.uploadUrl()));
@@ -56,8 +57,8 @@ public class PhotoService {
             });
   }
 
-  public Uni<Void> finalizePhotoUpload(UpdatePhotoCommand command) {
-    return photoDbService.update(command);
+  public Uni<PhotoResponse> finalizePhotoUpload(UpdatePhotoCommand command) {
+    return photoDbService.update(command).map(PhotoResponse::fromEntity);
   }
 
   public Uni<PhotoPageResponse> getPhotos(Long userId, Instant cursor) {

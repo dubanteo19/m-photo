@@ -35,7 +35,7 @@ public class PhotoDbService {
   }
 
   @WithSession
-  public Uni<Void> update(UpdatePhotoCommand command) {
+  public Uni<Photo> update(UpdatePhotoCommand command) {
     return findRequired(command.photoId())
         .flatMap(
             photo -> {
@@ -48,7 +48,7 @@ public class PhotoDbService {
               photo.width = command.width();
               photo.height = command.height();
               photo.status = PhotoStatus.READY;
-              return photo.persistAndFlush().replaceWithVoid();
+              return photo.persistAndFlush();
             });
   }
 

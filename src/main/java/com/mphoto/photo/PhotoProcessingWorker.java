@@ -17,11 +17,16 @@ import java.time.Instant;
 
 @ApplicationScoped
 public class PhotoProcessingWorker {
-  @Inject StorageService storageService;
-  @Inject ImageProcessor imageProcessor;
-  @Inject PhotoService photoService;
-  @Inject PhotoMetadataExtractor metadataExtractor;
-  @Inject Event<PhotoProcessedEvent> photoProcessedEvent;
+  @Inject
+  StorageService storageService;
+  @Inject
+  ImageProcessor imageProcessor;
+  @Inject
+  PhotoService photoService;
+  @Inject
+  PhotoMetadataExtractor metadataExtractor;
+  @Inject
+  Event<PhotoProcessedEvent> photoProcessedEvent;
 
   void onPhotoUploaded(@ObservesAsync PhotoUploadedEvent event) {
     Path source = null;
@@ -58,7 +63,7 @@ public class PhotoProcessingWorker {
       // 5. Fire an event to notify that the photo has been processed.
       photoProcessedEvent.fireAsync(
           new PhotoProcessedEvent(
-              event.photoId(), photoKey, thumbnailKey, processed.size(), metadata));
+              event.userId(), event.photoId(), photoKey, thumbnailKey, processed.size(), metadata));
     } catch (Exception e) {
       Log.errorf(e, "Failed to process photo %d", event.photoId());
     } finally {
@@ -72,4 +77,3 @@ public class PhotoProcessingWorker {
     }
   }
 }
-

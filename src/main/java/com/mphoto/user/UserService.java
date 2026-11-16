@@ -12,7 +12,8 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 public class UserService {
 
-  @Inject UserDbService userDbService;
+  @Inject
+  UserDbService userDbService;
 
   public Uni<User> findByUsername(String username) {
     return userDbService.findByUsername(username);

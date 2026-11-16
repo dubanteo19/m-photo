@@ -25,10 +25,13 @@ import org.eclipse.microprofile.jwt.Claim;
 @RequestScoped
 public class PhotoResource {
 
-  @Inject Event<PhotoUploadedEvent> eventPublisher;
-  @Inject Event<List<PhotoStorageObjects>> photoPurgedEventPubliser;
+  @Inject
+  Event<PhotoUploadedEvent> eventPublisher;
+  @Inject
+  Event<List<PhotoStorageObjects>> photoPurgedEventPubliser;
 
-  @Inject PhotoService photoService;
+  @Inject
+  PhotoService photoService;
 
   @Inject
   @Claim("userId")
@@ -49,7 +52,7 @@ public class PhotoResource {
               if (updated != null) {
                 eventPublisher.fireAsync(
                     new PhotoUploadedEvent(
-                        updated.id, updated.sourceObjectKey, updated.sourceMimeType));
+                        currentUserId, updated.id, updated.sourceObjectKey, updated.sourceMimeType));
               }
             })
         .replaceWith(Response.noContent().build());

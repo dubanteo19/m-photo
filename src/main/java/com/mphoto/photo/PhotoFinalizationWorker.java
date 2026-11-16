@@ -2,6 +2,9 @@ package com.mphoto.photo;
 
 import com.mphoto.event.PhotoProcessedEvent;
 import com.mphoto.photo.dto.UpdatePhotoCommand;
+import com.mphoto.realtime.UserEventBroadcaster;
+import com.mphoto.user.dto.event.UserEvent;
+import com.mphoto.user.dto.event.UserEventType;
 
 import io.quarkus.logging.Log;
 import io.vertx.core.Vertx;
@@ -13,7 +16,8 @@ import jakarta.inject.Inject;
 public class PhotoFinalizationWorker {
   @Inject
   PhotoService photoService;
-
+  @Inject
+  UserEventBroadcaster userEventBroadcaster;
   @Inject
   Vertx vertx;
 
@@ -34,8 +38,13 @@ public class PhotoFinalizationWorker {
         metadata.height());
 
     vertx.getOrCreateContext().runOnContext(ignored -> photoService.finalizePhotoUpload(command)
-        .subscribe().with(
-            result -> Log.infof("Photo %d finalized", event.photoId()),
+        .subscribe()
+        .with(
+            photoResponse -> {
+              Log.infof("Photo %d finalized", photoResponse.id());
+              userEventBroadcaster.send(event.userId(),
+                  new UserEvent(UserEventType.PHOTO_PROCESSED, photoResponse));
+            },
             failure -> Log.errorf(failure, "Failed to finalize photo %d", event.photoId())));
   }
 }
