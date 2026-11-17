@@ -62,10 +62,15 @@ public class ImageProcessor {
       encodeAvif(mainJpeg, mainAvif, log);
       encodeAvif(thumbnailJpeg, thumbnailAvif, log);
 
+      byte[] originalBytes = Files.readAllBytes(input);
       byte[] mainBytes = Files.readAllBytes(mainAvif);
       byte[] thumbnailBytes = Files.readAllBytes(thumbnailAvif);
 
-      return new ProcessedImage(mainBytes, thumbnailBytes, mainBytes.length);
+      boolean useAvif = mainBytes.length < originalBytes.length;
+      var finalBytes = useAvif ? mainBytes : originalBytes;
+      long finalSize = useAvif ? mainBytes.length : originalBytes.length;
+
+      return new ProcessedImage(finalBytes, thumbnailBytes, finalSize);
     } finally {
       try (var paths = Files.walk(workDir)) {
         paths
@@ -103,8 +108,7 @@ public class ImageProcessor {
 
   private void runCommand(List<String> command, Path log) throws IOException {
 
-    Process process =
-        new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();
+    Process process = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(log.toFile()).start();
 
     try {
       boolean completed = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -131,7 +135,10 @@ public class ImageProcessor {
       case "image/png" -> ".png";
       case "image/heic" -> ".heic";
       case "image/heif" -> ".heif";
-      default -> throw new IllegalArgumentException("Unsupported image type: " + contentType);
+      case "image/webp" -> ".webp";
+      case "image/avif" -> ".avif";
+      default -> throw new IllegalArgumentException(
+          "Unsupported image type: " + contentType);
     };
   }
 }
