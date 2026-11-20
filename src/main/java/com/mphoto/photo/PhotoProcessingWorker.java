@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 
 @ApplicationScoped
 public class PhotoProcessingWorker {
@@ -47,8 +48,11 @@ public class PhotoProcessingWorker {
         processed = imageProcessor.process(input, event.contentType());
       }
 
-      String photoKey = "photos/" + event.photoId() + ".avif";
-      String thumbnailKey = "thumbnails/" + event.photoId() + ".avif";
+      String photoKey = "photos/" + UUID.randomUUID() + ".avif";
+      String thumbnailKey = "thumbnails/" + UUID.randomUUID() + ".avif";
+
+      // Upload thumbnail
+      storageService.uploadObject(thumbnailKey, processed.thumbnailBytes());
 
       // 3. Upload the processed image to storage.
       storageService.uploadObject(photoKey, processed.bytes());
